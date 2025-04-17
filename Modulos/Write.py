@@ -26,6 +26,7 @@ if response_mode.isError():
 else:
     print("✅ Modo de operação configurado para 4-20mA!")
 
+
 # **Função para obter valores do usuário com proteção de intervalo**
 def get_safe_value(output_number):
     while True:
@@ -38,12 +39,17 @@ def get_safe_value(output_number):
         except ValueError:
             print("❌ Entrada inválida! Digite um número válido.")
 
+
 # **Passo 2: Solicitar valores do usuário**
-values_to_write = [get_safe_value(i+1) for i in range(4)]
+values_to_write = [get_safe_value(i + 1) for i in range(4)]
 
 # **Passo 3: Escrever valores nas saídas analógicas**
 for address, value in zip(ANALOG_OUTPUT_ADDRESSES, values_to_write):
+    print(f" escrever {value} mA na saída {address}")
+
+
     float_bytes = struct.pack(">f", value)  # Converter float para 4 bytes
+    print(f" escrever {float_bytes} ")
     float_words = struct.unpack(">HH", float_bytes)  # Quebrar em 2 registradores de 16 bits
 
     response = client.write_registers(address, float_words, slave=slave_id)

@@ -11,14 +11,17 @@ client = ModbusSerialClient(
     timeout=111
 )
 
+
 # Endereço inicial para leitura das saídas analógicas
-analog_read_address = 0x0000
+analog_read_address = 0000
 num_registers = 8  # 4 saídas analógicas x 2 registradores cada (float 32 bits)
 slave_id = 1
 
+
+
 # Realizar a leitura dos 8 registros (4 floats)
 response = client.read_holding_registers(address=analog_read_address, count=num_registers, slave=slave_id)
-
+print(f" escrever {response} ")
 # Verificar se houve erro na leitura
 if response.isError():
     print("❌ Erro ao ler as saídas analógicas:", response)
@@ -30,6 +33,7 @@ else:
     def convert_to_float(reg1, reg2):
         """Converte dois registros Modbus (16 bits cada) em um float de 32 bits"""
         raw = struct.pack('>HH', reg1, reg2)  # Big-endian
+        print(f" escrever {raw}")
         return struct.unpack('>f', raw)[0]  # Converte para float
 
 
