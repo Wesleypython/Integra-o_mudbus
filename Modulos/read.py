@@ -1,6 +1,10 @@
 import struct
 from pymodbus.client import ModbusSerialClient
 
+
+
+# Proxima etapa é fazer o loop de leitura nesse código.
+
 # Configuração do cliente Modbus RTU
 client = ModbusSerialClient(
     port='COM4',

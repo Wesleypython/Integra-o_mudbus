@@ -1,21 +1,28 @@
-import threading
-import time
+from pymodbus.client import ModbusSerialClient
+from pymodbus.exceptions import ModbusIOException
 
-def tarefa():
-    while True:
-        print("Executando tarefa em paralelo... \n")
-        time.sleep(1)
+client = ModbusSerialClient(
+    port='COM4',
+    baudrate=9600,
+    parity='E',
+    stopbits=1,
+    bytesize=8,
+    timeout=1
+)
 
-# Cria uma thread
-trede=threading.Thread(target=tarefa)
-trede.start()
+conectado = client.connect()
 
+if not conectado:
+    print("❌ Não foi possível abrir a porta COM.")
+else:
+    print("✅ Porta COM aberta. Testando comunicação Modbus...")
 
-
-def tarefa2():
-    for i in range(0,100):
-        print(i)
-        time.sleep(1)
-# Inicia a thread
-
-tarefa2()
+    unit_id = 1
+    try:
+        resposta = client.read_input_registers(100, count=1, slave=unit_id)
+        if resposta.isError():
+            print("❌ Porta COM aberta, mas sem resposta do dispositivo Modbus.")
+        else:
+            print("✅ Dispositivo Modbus respondeu corretamente!")
+    except ModbusIOException as e:
+        print("❌ Erro de comunicação Modbus:", e)

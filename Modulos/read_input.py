@@ -1,13 +1,12 @@
+from joblib import delayed
 from narwhals.selectors import string
 from pymodbus.client import ModbusSerialClient
 from pymodbus.payload import BinaryPayloadDecoder
 from pymodbus.constants import Endian
+from pymodbus.exceptions import ModbusIOException
 import threading
 import time
 # PRÓXIMA ETAPA É FAZER O LOOP ENQUANTO O USÁRIO NÃO INFORMA UM PARAMETRO
-
-
-
 
 client = ModbusSerialClient(
     port='COM4',
@@ -19,8 +18,23 @@ client = ModbusSerialClient(
 )
 client.connect()
 
-unit_id = 1
+try:
+    while True:
+        resposta = client.read_input_registers(100, count=1, slave=1)
+        if resposta.isError():
+            print("Porta COM aberta, mas sem resposta do dispositivo Modbus.")
+            comando = input("Digite '/parar' para encerrar ou pressione Enter para continuar: ")
+            if comando.strip().lower() == "/parar":
+                break
+        else:
+            print("Dispositivo Modbus respondeu corretamente!")
+            break
 
+except ModbusIOException as e:
+    print(" Erro de comunicação Modbus:", e)
+
+unit_id = 1
+parar_leitura = False
 
 def ler_AI(idx):
     base_int = 100 + idx    #O idx é apenas um índice da função de leitura e quem altera os valores é o for que chama a função
@@ -41,19 +55,20 @@ def ler_AI(idx):
 
     # O DECODE foi utilizado apenas para fazer a interpretação dos valores em miliamperes
     #  BinaryPayloadDecoder da pymodbus é exatamente para isso: interpretar os dois registradores consecutivos como um único valor float32
-    resp_float = client.read_input_registers(base_float, count=2, slave=unit_id)
-    print("-->",resp_float)
-    if not resp_float.isError():
-        decoder = BinaryPayloadDecoder.fromRegisters(
-            resp_float.registers,
-            byteorder=Endian.BIG,
-            wordorder=Endian.BIG
-        )
-        val_mA = decoder.decode_32bit_float() # Float mA
-    else:
-        val_mA = "Erro"
+    # resp_float = client.read_input_registers(base_float, count=2, slave=unit_id)
+    # print("-->",resp_float)
+    # if not resp_float.isError():
+    #     decoder = BinaryPayloadDecoder.fromRegisters(
+    #         resp_float.registers,
+    #         byteorder=Endian.BIG,
+    #         wordorder=Endian.BIG
+    #     )
+    #     val_mA = decoder.decode_32bit_float() # Float mA
+    # else:
+    #     val_mA = "Erro"
 
-    return val_uA, val_mA
+    return val_uA
+            # val_mA)
 
 
 #O filtro aqui se refere a uma configuração que suavisa a leitura para não ficar alterando os valores toda hora.
@@ -81,29 +96,21 @@ trigger_high = high.registers[0] if not high.isError() else "Erro"
 trigger_low = low.registers[0] if not low.isError() else "Erro"
 
 
-trigger_mode_resp = client.read_holding_registers(8100, count=1, slave=unit_id)
-trigger_mode = trigger_mode_resp.registers[0] if not trigger_mode_resp.isError() else "Erro"
-print("-",trigger_mode)
-
-
-
 
 def printando(leituras,filtro_equal, range_read):
-    # Printando os resultados
+
+    # Exibindo os valores
     print("📊 RESULTADOS ANALÓGICOS")
-    for i, (ua, ma) in enumerate(leituras, start=1):
-        print(f"Canal AI{i}: {ua} µA | {ma} mA")
+    for i, (ua) in enumerate(leituras, start=1):
+        print("Canal AI{}: {} µA | {} mA".format(i,ua, ua/1000))
 
     print(f"Filtro AI: {filtro_equal}")
     print(f"Faixa de corrente: {range_read}")
 
 
-leituras = [ler_AI(i) for i in range(4)] # quantidade de leitura das AIs, sabendo que cada leitura estará
-                                 # em uma tupla diferente ler_AI(i) e depois dentro da lista
-filtro_equal= filtro_function()
-range_read= faixa_de_leitura()
-parar_leitura = False  # variável de controle
 
+
+# tive que importar o modbus exception
 def escutar_terminal():
     global parar_leitura
     while True:
@@ -112,14 +119,39 @@ def escutar_terminal():
             parar_leitura = True
             break
 
-def loop_read():
-    global parar_leitura
-    while not parar_leitura:
-        printando(leituras, filtro_equal, range_read)
-        time.sleep(10)  # pequeno intervalo entre as leituras
 
+
+
+# Integrar nessa função um try com o excepty e também um loop para validar a se o componente ebyte ainda esta conectado. para PRINTAR
+# UM erro.
+def loop_read():
+    while not parar_leitura:
+        # Testando a conexão com o sistema Modbus
+        try:
+            while True:
+                resposta = client.read_input_registers(100, count=1, slave=1)
+                if resposta.isError():
+                    print("Porta COM aberta, mas sem resposta do dispositivo Modbus.")
+                    comando = input("Digite '/parar' para encerrar ou pressione Enter para continuar: ")
+                    if comando.strip().lower() == "/parar":
+                        break
+                else:
+                    print("Dispositivo Modbus respondeu corretamente!")
+                    break
+
+        except ModbusIOException as e:
+            print(" Erro de comunicação Modbus:", e)
+            time.sleep(5)
+
+
+        # Chamando as funções
+        leituras = [ler_AI(i) for i in range(4)]  # quantidade de leitura das AIs, sabendo que cada leitura estará
+        # em uma tupla diferente ler_AI(i) e depois dentro da lista
+        filtro_equal = filtro_function()
+        range_read = faixa_de_leitura()
+        printando(leituras, filtro_equal, range_read)
+        time.sleep(3)  # pequeno intervalo entre as leituras
     client.close()
-    print("Leitura encerrada.")
 
 # Inicia thread para escutar o terminal
 thread_input = threading.Thread(target=escutar_terminal)
