@@ -1,58 +1,72 @@
 import struct
-from pymodbus.client import ModbusSerialClient
+import time
+from pymodbus.client import ModbusTcpClient
 
-
-
-# Proxima etapa é fazer o loop de leitura nesse código.
-
-# Configuração do cliente Modbus RTU
-client = ModbusSerialClient(
-    port='COM4',
-    baudrate=9600,
-    parity='E',
-    stopbits=1,
-    bytesize=8,
-    timeout=111
+# Configuração do cliente Modbus TCP
+client = ModbusTcpClient(
+    host='192.168.3.2',
+    port=502,
+    timeout=1
 )
 
+# client = ModbusTcpClient(
+#     host='192.168.3.7',
+#     port=502,
+#     timeout=1
+# )
 
-# Endereço inicial para leitura das saídas analógicas
-analog_read_address = 0000
-num_registers = 8  # 4 saídas analógicas x 2 registradores cada (float 32 bits)
-slave_id = 1
+client.connect()
+slave_id =1
+# slave_id =2
 
 
 
-# Realizar a leitura dos 8 registros (4 floats)
-response = client.read_holding_registers(address=analog_read_address, count=num_registers, slave=slave_id)
-print(f" escrever {response} ")
-# Verificar se houve erro na leitura
-if response.isError():
-    print("❌ Erro ao ler as saídas analógicas:", response)
-else:
-    # Converte os registros lidos para floats de 32 bits
+
+analog_read_address = 0x0000
+num_registers = 8
+
+
+def convert_to_float(reg1, reg2):
+    raw = struct.pack('>HH', reg1, reg2)
+    return struct.unpack('>f', raw)[0]
+
+
+
+
+def read_valor_input():
+    response = client.read_holding_registers(address=analog_read_address, count=num_registers, slave=slave_id)
+    if response.isError():
+        print(" Erro ao ler as saídas analógicas:", response)
+        return None
     registers = response.registers
-
-
-    def convert_to_float(reg1, reg2):
-        """Converte dois registros Modbus (16 bits cada) em um float de 32 bits"""
-        raw = struct.pack('>HH', reg1, reg2)  # Big-endian
-        print(f" escrever {raw}")
-        return struct.unpack('>f', raw)[0]  # Converte para float
-
-
-    # Lendo os valores das saídas analógicas
     analog_value_1 = convert_to_float(registers[0], registers[1])
     analog_value_2 = convert_to_float(registers[2], registers[3])
     analog_value_3 = convert_to_float(registers[4], registers[5])
     analog_value_4 = convert_to_float(registers[6], registers[7])
+    return analog_value_1, analog_value_2, analog_value_3, analog_value_4
 
-    # Exibir os valores corrigidos
-    print(f"🔹 Saída Analógica 1: {analog_value_1:.2f} mA")
-    print(f"🔹 Saída Analógica 2: {analog_value_2:.2f} mA")
-    print(f"🔹 Saída Analógica 3: {analog_value_3:.2f} mA")
-    print(f"🔹 Saída Analógica 4: {analog_value_4:.2f} mA")
 
-# Fecha a conexão Modbus
-client.close()
-print("🔌 Conexão encerrada.")
+
+# Função para exibir os valores
+def exibindo(valores):
+    print(f"🔹 Saída Analógica 1: {valores[0]:.2f} mA")
+    print(f"🔹 Saída Analógica 2: {valores[1]:.2f} mA")
+    print(f"🔹 Saída Analógica 3: {valores[2]:.2f} mA")
+    print(f"🔹 Saída Analógica 4: {valores[3]:.2f} mA")
+    print("-" * 40)
+
+
+
+
+
+try:
+    while True:
+        analogico = read_valor_input()
+        if analogico:
+            exibindo(analogico)# chama a função e passa os parametros do analógico.
+        time.sleep(2)  # Aguarda 2 segundos antes da próxima leitura
+except KeyboardInterrupt:
+    print(" Leitura interrompida pelo usuário.")
+finally:
+    client.close()
+    print("🔌 Conexão encerrada.")
