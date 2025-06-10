@@ -1,0 +1,32 @@
+# Ignora o ambiente virtual
+.venv/
+
+# Ignora arquivos gerados pelo Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Arquivos de log
+*.log
+
+# IDEs (PyCharm, VSCode)
+.idea/
+.vscode/
+
+# Arquivos temporários de sistema
+.DS_Store
+Thumbs.db
+
+# Arquivos de build e distribuição (caso futuro)
+build/
+dist/
+*.egg-info/
+
+# Arquivos de banco de dados ou outros temporários (caso use)
+*.sqlite3
+
+# Arquivos de configuração pessoais
+.env
+*.cfg
+*.ini
